@@ -1,4 +1,4 @@
-import React, {Component, useRef, useEffect} from 'react';
+import React, { Component } from 'react';
 import ReactGA from 'react-ga';
 import './App.css';
 import './Lobby.css';
@@ -14,7 +14,6 @@ import {
     SERVER_ADDRESS_HTTP,
     NEW_LOBBY,
     CHECK_LOGIN,
-    SERVER_ADDRESS,
     WEBSOCKET,
     PARAM_USER_COUNT,
     PARAM_USERNAMES,
@@ -65,7 +64,6 @@ import {
     HITLER,
     PARAM_DRAW_DECK,
     PARAM_DISCARD_DECK,
-    WEBSOCKET_HEADER,
     DEBUG,
     PACKET_PONG,
     PING_INTERVAL, COMMAND_PING, SERVER_PING, PARAM_ICON, PARAM_DID_VETO_OCCUR, PARAM_INVESTIGATION
@@ -98,14 +96,11 @@ import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
 import HelmetMetaData from "./util/HelmetMetaData";
-import {defaultPortrait} from "./assets";
+import { defaultPortrait } from "./assets";
 import Player from "./player/Player";
 import LoginPageContent from "./LoginPageContent";
 import Cookies from 'js-cookie';
 import AnnouncementBox from './util/AnnouncementBox';
-import { authStore } from './store/authStore';
-import { AuthProvider } from './components/AuthProvider';
-import { discordSdk } from './actions/auth';
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -165,10 +160,10 @@ const TEST_GAME_STATE = {
 };*/
 
 if (DEBUG) {
-	console.warn("Running in debug mode.");
+    console.warn("Running in debug mode.");
 }
 
-class BaseApp extends Component {
+class App extends Component {
 
     websocket = undefined;
     failedConnections = 0;
@@ -179,6 +174,7 @@ class BaseApp extends Component {
     okMessageListeners = [];
     allAnimationsFinished = true;
     gameOver = false;
+    modlogs = [];
 
     // noinspection DuplicatedCode
     constructor(props) {
@@ -215,16 +211,15 @@ class BaseApp extends Component {
             snackbarMessage: "",
 
             showAlert: false,
-            alertContent: <div/>,
+            alertContent: <div />,
 
             showEventBar: false,
             eventBarMessage: "",
 
             statusBarText: "---",
             allAnimationsFinished: true,
-            user: {},
-            participantMap: {}
         };
+        this.modlogs = [];
 
         // The website uses Google Analytics!
         ReactGA.initialize("UA-166327773-1");
@@ -248,9 +243,6 @@ class BaseApp extends Component {
         this.showChangeIconAlert = this.showChangeIconAlert.bind(this);
         this.updateChangeIconAlert = this.updateChangeIconAlert.bind(this);
         this.onClickChangeIcon = this.onClickChangeIcon.bind(this);
-        this.auth = props.auth;
-        this.participants = [];
-        this.participantMap = {};
 
         // Ping the server to wake it up if it's not currently being used
         // This reduces the delay users experience when starting lobbies
@@ -265,13 +257,6 @@ class BaseApp extends Component {
      * @return {Promise<Response>}
      */
     async tryCreateLobby() {
-        const { participants } = await discordSdk.commands.getInstanceConnectedParticipants();
-        this.participants = participants;
-        this.participantMap = {};
-        this.participants.forEach(p => {
-            this.participantMap[p.username] = p;
-        });
-        this.setState({ participantMap: this.participantMap })
         return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY);
     }
 
@@ -303,7 +288,7 @@ class BaseApp extends Component {
             console.log("Opening connection with lobby: " + lobby);
             console.log("Failed connections: " + this.failedConnections);
         }
-        let url = WEBSOCKET_HEADER + SERVER_ADDRESS + WEBSOCKET + "?name=" + encodeURI(name) + "&lobby=" + encodeURI(lobby);
+        let url = WEBSOCKET + "?name=" + encodeURI(name) + "&lobby=" + encodeURI(lobby);
         if (DEBUG) {
             console.log("TryOpenWebsocket URL: " + url);
         }
@@ -315,7 +300,7 @@ class BaseApp extends Component {
             // This is to prevent the bug where players flash in/out of the lobby page
             // at random points in the game.
             if (this.state.page === PAGE.LOGIN) {
-                this.setState({page: PAGE.LOBBY});
+                this.setState({ page: PAGE.LOBBY });
             }
             this.setState({
                 name: name,
@@ -365,7 +350,7 @@ class BaseApp extends Component {
             this.failedConnections += 1;
             this.tryOpenWebSocket(this.state.name, this.state.lobby);
         } else if (this.reconnectOnConnectionClosed) {
-            if (DEBUG) {console.log("Disconnecting from lobby.")}
+            if (DEBUG) { console.log("Disconnecting from lobby.") }
             this.setState({
                 joinName: this.state.name,
                 joinLobby: this.state.lobby,
@@ -418,7 +403,7 @@ class BaseApp extends Component {
                 if (message !== this.state.gameState) {
                     this.onGameStateChanged(message);
                 }
-                this.setState({gameState: message, page: PAGE.GAME});
+                this.setState({ gameState: message, page: PAGE.GAME });
                 break;
 
             case PACKET_OK: // Traverse all listeners and call the functions.
@@ -437,8 +422,8 @@ class BaseApp extends Component {
 
                 this.queueAlert(
                     <InvestigationAlert party={party}
-                                        target={message[PARAM_TARGET]}
-                                        hideAlert={this.hideAlertAndFinish}
+                        target={message[PARAM_TARGET]}
+                        hideAlert={this.hideAlertAndFinish}
                     />
                     , false);
                 break;
@@ -519,50 +504,50 @@ class BaseApp extends Component {
     };
 
     shouldJoinButtonBeEnabled() {
-        return (this.state.joinLobby.length === LOBBY_CODE_LENGTH) //&& (this.state.joinName.length !== 0)
+        return (this.state.joinLobby.length === LOBBY_CODE_LENGTH) && (this.state.joinName.length !== 0)
     }
 
     shouldCreateLobbyButtonBeEnabled() {
-        return true;//(this.state.createLobbyName.length !== 0);
+        return (this.state.createLobbyName.length !== 0);
     }
 
     /**
      * Attempts to connect to the lobby via websocket.
      */
     onClickJoin = () => {
-        this.setState({joinError: "Connecting..."});
-        this.tryLogin(this.auth.user?.username || this.state.user?.username || this.state.joinName, this.state.joinLobby)
+        this.setState({ joinError: "Connecting..." });
+        this.tryLogin(this.state.joinName, this.state.joinLobby)
             .then(response => {
                 if (!response.ok) {
                     if (DEBUG) {
                         console.log("Response is not ok");
                     }
                     if (response.status === 404) {
-                        this.setState({joinError: "The lobby could not be found."});
+                        this.setState({ joinError: "The lobby could not be found." });
                         ReactGA.event({
                             category: "Login Failed",
                             action: "Lobby not found - User unable to connect."
                         });
                     } else if (response.status === 403) {
-                        this.setState({joinError: "There is already a user with the name '" + this.state.joinName + "' in the lobby."});
+                        this.setState({ joinError: "There is already a user with the name '" + this.state.joinName + "' in the lobby." });
                         ReactGA.event({
                             category: "Login Failed",
                             action: "Duplicate name - User unable to connect."
                         });
                     } else if (response.status === 488) {
-                        this.setState({joinError: "The lobby is currently in a game."});
+                        this.setState({ joinError: "The lobby is currently in a game." });
                         ReactGA.event({
                             category: "Login Failed",
                             action: "Ongoing game - User unable to connect."
                         });
                     } else if (response.status === 489) {
-                        this.setState({joinError: "The lobby is currently full."})
+                        this.setState({ joinError: "The lobby is currently full." })
                         ReactGA.event({
                             category: "Login Failed",
                             action: "Lobby full - User unable to connect."
                         });
                     } else {
-                        this.setState({joinError: "There was an error connecting to the server. Please try again."});
+                        this.setState({ joinError: "There was an error connecting to the server. Please try again." });
                         ReactGA.event({
                             category: "Login Failed",
                             action: "Misc - User was unable to connect."
@@ -571,16 +556,16 @@ class BaseApp extends Component {
                 } else {
                     // Username and lobby were verified. Try to open websocket.
                     if (!this.tryOpenWebSocket(this.state.joinName, this.state.joinLobby)) {
-                        this.setState({joinError: "There was an error connecting to the server. Please try again."});
+                        this.setState({ joinError: "There was an error connecting to the server. Please try again." });
                     } else {
-                      // Save the username and lobby login
-                      Cookies.set(COOKIE_NAME, this.state.name, {expires: 7});
-                      Cookies.set(COOKIE_LOBBY, this.state.joinLobby);
+                        // Save the username and lobby login
+                        Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
+                        Cookies.set(COOKIE_LOBBY, this.state.joinLobby);
                     }
                 }
             })
             .catch(() => {
-                this.setState({joinError: "There was an error contacting the server. Please wait and try again."});
+                this.setState({ joinError: "There was an error contacting the server. Please wait and try again." });
             });
     };
 
@@ -588,12 +573,12 @@ class BaseApp extends Component {
      * Attempts to connect to the server and create a new lobby, and then opens a connection to the lobby.
      */
     onClickCreateLobby = () => {
-        this.setState({createLobbyError: "Connecting..."});
+        this.setState({ createLobbyError: "Connecting..." });
         this.tryCreateLobby().then(response => {
             if (response.ok) {
                 response.text().then(lobbyCode => {
                     if (!this.tryOpenWebSocket(this.state.createLobbyName, lobbyCode)) { // if the connection failed
-                        this.setState({createLobbyError: "There was an error connecting to the server. Please try again."});
+                        this.setState({ createLobbyError: "There was an error connecting to the server. Please try again." });
                         ReactGA.event({
                             category: "Lobby Creation Failed",
                             action: "Failed to create a new lobby.",
@@ -604,12 +589,12 @@ class BaseApp extends Component {
                             action: "Successfully created new lobby.",
                         });
                         // Save the username and lobby login
-                        Cookies.set(COOKIE_NAME, this.state.name, {expires: 7});
+                        Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
                         Cookies.set(COOKIE_LOBBY, lobbyCode);
                     }
                 });
             } else {
-                this.setState({createLobbyError: "There was an error connecting to the server. Please try again."});
+                this.setState({ createLobbyError: "There was an error connecting to the server. Please try again." });
                 ReactGA.event({
                     category: "Lobby Creation Failed",
                     action: "Failed to create a new lobby.",
@@ -617,7 +602,7 @@ class BaseApp extends Component {
             }
         })
             .catch(() => {
-                this.setState({createLobbyError: "There was an error connecting to the server. Please try again."});
+                this.setState({ createLobbyError: "There was an error connecting to the server. Please try again." });
                 ReactGA.event({
                     category: "Lobby Creation Failed",
                     action: "Failed to create a new lobby.",
@@ -632,8 +617,8 @@ class BaseApp extends Component {
                 <header className="App-header">
                     SECRET-HITLER.ONLINE
                 </header>
-                <br/>
-                <div style={{textAlign: "center"}}>
+                <br />
+                <div style={{ textAlign: "center" }}>
                     {/** TODO: Add reusable announcement component. 
                     <div style={{backgroundColor: "#222222", width: "50vmin", margin: "0 auto", padding: "20px"}}>
                         <p>
@@ -653,7 +638,14 @@ class BaseApp extends Component {
                         showCharCount={false}
                         forceUpperCase={true}
                     />
-                    <p id={"errormessage"}>Joining as: {this.auth.user?.username || this.state.user.username}<br />{this.state.joinError}</p>
+
+                    <MaxLengthTextField
+                        label={"Your Name"}
+                        onChange={this.updateJoinName}
+                        value={this.state.joinName}
+                        maxLength={12}
+                    />
+                    <p id={"errormessage"}>{this.state.joinError}</p>
                     <button
                         onClick={this.onClickJoin}
                         disabled={!this.shouldJoinButtonBeEnabled()}
@@ -661,9 +653,15 @@ class BaseApp extends Component {
                         JOIN
                     </button>
                 </div>
-                <br/>
+                <br />
                 <div>
                     <h2>CREATE A LOBBY</h2>
+                    <MaxLengthTextField
+                        label={"Your Name"}
+                        onChange={this.updateCreateLobbyName}
+                        value={this.state.createLobbyName}
+                        maxLength={12}
+                    />
                     <p id={"errormessage"}>{this.state.createLobbyError}</p>
                     <button
                         onClick={this.onClickCreateLobby}
@@ -673,14 +671,14 @@ class BaseApp extends Component {
                     </button>
                 </div>
                 <AnnouncementBox>
-                  <h2>Announcing: BOTS!</h2>
-                  <p>You can now start games with only 1-4 players; extra
-                    spots will be filled by bots.
-                  </p>
-                  <p>Bots are still in beta, so <a href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"} target={"_blank"} rel="noreferrer">leave feedback on GitHub!</a></p>
-                  <p style={{fontStyle: "italic", fontSize: "calc(8px + 1vmin)"}}>(Please be nice, they are trying their best.)</p>
+                    <h2>Announcing: BOTS!</h2>
+                    <p>You can now start games with only 1-4 players; extra
+                        spots will be filled by bots.
+                    </p>
+                    <p>Bots are still in beta, so <a href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"} target={"_blank"} rel="noreferrer">leave feedback on GitHub!</a></p>
+                    <p style={{ fontStyle: "italic", fontSize: "calc(8px + 1vmin)" }}>(Please be nice, they are trying their best.)</p>
                 </AnnouncementBox>
-                <br/>
+                <br />
                 <LoginPageContent />
             </div>
         );
@@ -700,19 +698,17 @@ class BaseApp extends Component {
         let i = 0;
         for (i; i < this.state.userCount; i++) {
             let name = this.state.usernames[i];
-            let user = this.state.participantMap[name];
-            let displayName = user?.global_name || name;
+            let displayName = name;
             if (i === 0) {
                 displayName += " [★VIP]";
             }
             out[i] = <Player
-                    name={displayName}
-                    showRole={false}
-                    icon={user?.avatar? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`: "+"+this.state.icons[name]}
-                    isBusy={this.state.icons[name] === defaultPortrait}
-                    highlight={name === this.state.name}
-                    key={displayName}
-                />;
+                name={displayName}
+                showRole={false}
+                icon={this.state.icons[name]}
+                isBusy={this.state.icons[name] === defaultPortrait}
+                highlight={name === this.state.name}
+            />;
         }
         return out;
     }
@@ -722,19 +718,21 @@ class BaseApp extends Component {
     }
 
     updateChangeIconAlert() {
-        this.setState({alertContent: <IconSelection
-                onConfirm={() => {this.clearAnimationQueue(); this.hideAlertAndFinish();}}
+        this.setState({
+            alertContent: <IconSelection
+                onConfirm={() => { this.clearAnimationQueue(); this.hideAlertAndFinish(); }}
                 sendWSCommand={this.sendWSCommand}
                 playerToIcon={this.state.icons}
                 players={this.state.usernames}
                 user={this.state.name}
-                onClickTweet={()=> {ReactGA.event({category: "Sharing", action: "User shared tweet"})}}
-            />}
+                onClickTweet={() => { ReactGA.event({ category: "Sharing", action: "User shared tweet" }) }}
+            />
+        }
         );
     }
 
     showChangeIconAlert() {
-        this.queueAlert(<div/>, false); // false here prevents dialog from closing when server confirms selection
+        this.queueAlert(<div />, false); // false here prevents dialog from closing when server confirms selection
         this.updateChangeIconAlert();
     }
 
@@ -776,7 +774,7 @@ class BaseApp extends Component {
     }
 
     showSnackBar(message) {
-        this.setState({snackbarMessage: message});
+        this.setState({ snackbarMessage: message });
         let snackbar = document.getElementById("snackbar");
         snackbar.className = "show";
         this.snackbarMessages++;
@@ -801,18 +799,18 @@ class BaseApp extends Component {
                     {this.state.alertContent}
                 </CustomAlert>
 
-                <div style={{textAlign: "left", marginLeft: "20px", marginRight: "20px"}}>
+                <div style={{ textAlign: "left", marginLeft: "20px", marginRight: "20px" }}>
 
-                    <div style={{display: "flex", flexDirection: "row"}}>
+                    <div style={{ display: "flex", flexDirection: "row" }}>
                         <h2>LOBBY CODE: </h2>
-                        <h2 style={{marginLeft: "5px", color: "var(--textColorHighlight)"}}>{this.state.lobby}</h2>
+                        <h2 style={{ marginLeft: "5px", color: "var(--textColorHighlight)" }}>{this.state.lobby}</h2>
                     </div>
 
 
-                    <p style={{marginBottom: "2px"}}>Copy and share this link to invite other players.</p>
-                    <div style={{textAlign: "left", display: "flex", flexDirection: "row", alignItems: "center"}}>
+                    <p style={{ marginBottom: "2px" }}>Copy and share this link to invite other players.</p>
+                    <div style={{ textAlign: "left", display: "flex", flexDirection: "row", alignItems: "center" }}>
                         <textarea id="linkText" readOnly={true}
-                                  value={"https://secret-hitler.online/?lobby=" + this.state.lobby}/>
+                            value={"https://secret-hitler.online/?lobby=" + this.state.lobby} />
                         <button
                             onClick={this.onClickCopy}
                         >
@@ -825,7 +823,7 @@ class BaseApp extends Component {
                         <div id={"lobby-player-area-container"}>
                             <div id={"lobby-player-text-choose-container"}>
                                 <p id={"lobby-player-count-text"}>Players ({this.state.userCount}/10)</p>
-                                <button id={'lobby-invite-button'} onClick={async()=>{await discordSdk.commands.openInviteDialog()}}>INVITE ({this.state.lobby})</button>
+                                <button id={"lobby-change-icon-button"} onClick={this.onClickChangeIcon}>CHANGE ICON</button>
                             </div>
                             <div id={"lobby-player-container"}>
                                 {this.renderPlayerList()}
@@ -834,7 +832,7 @@ class BaseApp extends Component {
 
                         <div id={"lobby-button-container"}>
                             {!isVIP &&
-                            <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
+                                <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
                             }
                             <button
                                 onClick={this.onClickStartGame}
@@ -850,20 +848,20 @@ class BaseApp extends Component {
                         <div id={"lobby-text-container"}>
                             <p id={"lobby-about-text"}>
                                 <a href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/blob/main/README.md"}
-                                   target={"_blank"} rel="noopener noreferrer" onClick={this.onClickAbout}>
+                                    target={"_blank"} rel="noopener noreferrer" onClick={this.onClickAbout}>
                                     About this project
                                 </a>
                             </p>
-                            <br/>
+                            <br />
                             <p id={"lobby-warning-text"}>
                                 You can report bugs on the <a
-                                href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues"} rel="noopener noreferrer" target={"_blank"}>Issues
-                                page.</a>
+                                    href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues"} rel="noopener noreferrer" target={"_blank"}>Issues
+                                    page.</a>
                             </p>
                         </div>
                     </div>
                 </div>
-                <div style={{textAlign: "center"}}>
+                <div style={{ textAlign: "center" }}>
                     <div id="snackbar">{this.state.snackbarMessage}</div>
                 </div>
             </div>
@@ -885,6 +883,7 @@ class BaseApp extends Component {
         let isPresident = this.state.name === newState[PARAM_PRESIDENT];
         let isChancellor = this.state.name === newState[PARAM_CHANCELLOR];
         let state = newState[PARAM_STATE];
+        let log_;
 
         // If last state was setup, which indicates that the client is re-entering the game or starting the game, then
         // we set the card count, liberal/fascist policy count, and the tracker to be visible.
@@ -923,7 +922,7 @@ class BaseApp extends Component {
                     this.queueAlert(
                         <ElectionTrackerAlert
                             trackerPosition={trackerPosition}
-                            closeAlert={this.hideAlertAndFinish}/>
+                            closeAlert={this.hideAlertAndFinish} />
                     );
                 }
             }
@@ -936,8 +935,15 @@ class BaseApp extends Component {
                 this.queueAlert((
                     <PolicyEnactedAlert
                         hideAlert={this.hideAlertAndFinish}
-                        policyType={newState[PARAM_LAST_POLICY]}/>
+                        policyType={newState[PARAM_LAST_POLICY]} />
                 ));
+                log_ = "> "
+                    + newState[PARAM_CHANCELLOR]
+                    + " enacted "
+                    + newState[PARAM_LAST_POLICY]
+                    + " policy."
+                console.log(log_);
+                this.modlogs.push(log_);
             }
 
 
@@ -978,14 +984,14 @@ class BaseApp extends Component {
                     if (isPresident) {
                         //Show the chancellor nomination window.
                         this.queueAlert(
-                            SelectNominationPrompt(name, newState, this.sendWSCommand, this.state.participantMap)
+                            SelectNominationPrompt(name, newState, this.sendWSCommand)
                         );
                     }
 
                     break;
 
                 case STATE_CHANCELLOR_VOTING:
-                    this.setState({statusBarText: ""});
+                    this.setState({ statusBarText: "" });
                     this.queueEventUpdate("VOTING");
                     this.queueStatusMessage("Waiting for all players to vote.");
                     // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
@@ -995,7 +1001,6 @@ class BaseApp extends Component {
                                 gameState={newState}
                                 sendWSCommand={this.sendWSCommand}
                                 user={this.state.name}
-                                participantMap={this.state.participantMap}
                             />
                             , true
                         );
@@ -1021,6 +1026,16 @@ class BaseApp extends Component {
                         );
                     }
 
+                    log_ = "> "
+                        + newState[PARAM_PRESIDENT]
+                        + " got "
+                        + newState[PARAM_PRESIDENT_CHOICES].filter(card => card === LIBERAL).length
+                        + " liberal cards and "
+                        + newState[PARAM_PRESIDENT_CHOICES].filter(card => card === FASCIST).length
+                        + " fascist cards";
+                    console.log(log_);
+                    this.modlogs.push(log_);
+
                     break;
 
                 case STATE_LEGISLATIVE_CHANCELLOR:
@@ -1029,7 +1044,7 @@ class BaseApp extends Component {
                         this.queueAlert(
                             <ChancellorLegislativePrompt
                                 fascistPolicies={newState[PARAM_FASCIST_POLICIES]}
-                                showError={(message) => this.setState({snackbarMessage: message})}
+                                showError={(message) => this.setState({ snackbarMessage: message })}
                                 policyOptions={newState[PARAM_CHANCELLOR_CHOICES]}
                                 sendWSCommand={this.sendWSCommand}
                                 // Disable if veto has already happened
@@ -1037,6 +1052,17 @@ class BaseApp extends Component {
                             />
                         );
                     }
+
+                    log_ = "> "
+                        + newState[PARAM_PRESIDENT]
+                        + " gave "
+                        + newState[PARAM_CHANCELLOR] + " "
+                        + newState[PARAM_CHANCELLOR_CHOICES].filter(card => card === LIBERAL).length
+                        + " liberal cards and "
+                        + newState[PARAM_CHANCELLOR_CHOICES].filter(card => card === FASCIST).length
+                        + " fascist cards";
+                    console.log(log_);
+                    this.modlogs.push(log_);
                     break;
 
                 case STATE_LEGISLATIVE_PRESIDENT_VETO:
@@ -1049,6 +1075,11 @@ class BaseApp extends Component {
                             />
                             , true)
                     }
+                    log_ = "> "
+                        + newState[PARAM_CHANCELLOR]
+                        + " mentioned veto ";
+                    console.log(log_);
+                    this.modlogs.push(log_);
                     break;
 
                 case STATE_PP_PEEK:
@@ -1068,7 +1099,7 @@ class BaseApp extends Component {
                 case STATE_PP_ELECTION:
                     this.queueEventUpdate("PRESIDENTIAL POWER");
                     if (isPresident) {
-                        this.queueAlert(SelectSpecialElectionPrompt(name, newState, this.sendWSCommand, this.state.participantMap));
+                        this.queueAlert(SelectSpecialElectionPrompt(name, newState, this.sendWSCommand));
                     } else {
                         this.queueStatusMessage("Special Election: President is choosing the next president.");
                     }
@@ -1077,7 +1108,7 @@ class BaseApp extends Component {
                 case STATE_PP_EXECUTION:
                     this.queueEventUpdate("PRESIDENTIAL POWER");
                     if (isPresident) {
-                        this.queueAlert(SelectExecutionPrompt(name, newState, this.sendWSCommand, this.state.participantMap), true);
+                        this.queueAlert(SelectExecutionPrompt(name, newState, this.sendWSCommand), true);
                     } else {
                         this.queueStatusMessage("Execution: President is choosing a player to execute.");
                     }
@@ -1086,7 +1117,7 @@ class BaseApp extends Component {
                 case STATE_PP_INVESTIGATE:
                     this.queueEventUpdate("PRESIDENTIAL POWER");
                     if (isPresident) {
-                        this.queueAlert(SelectInvestigationPrompt(name, newState, this.sendWSCommand, this.state.participantMap));
+                        this.queueAlert(SelectInvestigationPrompt(name, newState, this.sendWSCommand));
                     } else {
                         this.queueStatusMessage("Investigation: President is choosing a player to investigate.");
                     }
@@ -1101,14 +1132,13 @@ class BaseApp extends Component {
                                     <ButtonPrompt
                                         label={"SPECIAL ELECTION"}
                                         footerText={newState[PARAM_PRESIDENT] + " has chosen " + newState[PARAM_TARGET]
-                                        + " to be the next president."
-                                        + "\nThe normal presidential order will resume after the next round."}
+                                            + " to be the next president."
+                                            + "\nThe normal presidential order will resume after the next round."}
                                         buttonText={"OKAY"}
                                         buttonOnClick={this.hideAlertAndFinish}
                                     >
                                         <PlayerDisplay
                                             user={name}
-                                            participantMap={this.state.participantMap}
                                             gameState={newState}
                                             showLabels={false}
                                             players={[newState[PARAM_TARGET]]}
@@ -1135,9 +1165,8 @@ class BaseApp extends Component {
                                     >
                                         <PlayerDisplay
                                             user={name}
-                                            showRoles={false}
                                             gameState={newState}
-                                            participantMap={this.state.participantMap}
+                                            showRoles={false}
                                             playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
                                             players={[newState[PARAM_TARGET]]}
                                         />
@@ -1156,17 +1185,16 @@ class BaseApp extends Component {
                                         // If not target: [Target Name] has been investigated by [President Name].
                                         //                The president now knows their party affiliation.
                                         footerText={(isTarget ? "You have " : newState[PARAM_TARGET] + " has ")
-                                        + " been investigated by " + newState[PARAM_PRESIDENT] + ". "
-                                        + "The president now knows " + (isTarget ? "your" : "their")
-                                        + " party affiliation (Liberal/Fascist)."}
+                                            + " been investigated by " + newState[PARAM_PRESIDENT] + ". "
+                                            + "The president now knows " + (isTarget ? "your" : "their")
+                                            + " party affiliation (Liberal/Fascist)."}
                                         buttonOnClick={this.hideAlertAndFinish}
                                         buttonText={"OKAY"}
                                     >
                                         <PlayerDisplay
                                             user={name}
-                                            showLabels={false}
                                             gameState={newState}
-                                            participantMap={this.state.participantMap}
+                                            showLabels={false}
                                             players={[newState[PARAM_TARGET]]}
                                         />
                                     </ButtonPrompt>
@@ -1265,7 +1293,7 @@ class BaseApp extends Component {
                                                     alt={headerAlt}
                                                     id={"victory-header"}
                                                 />
-                                                <p style={{textAlign: "center"}} className={messageClass}>
+                                                <p style={{ textAlign: "center" }} className={messageClass}>
                                                     {victoryMessage}
                                                 </p>
                                             </>
@@ -1290,7 +1318,6 @@ class BaseApp extends Component {
                                 >
                                     <PlayerDisplay
                                         players={players}
-                                        participantMap={this.state.participantMap}
                                         playerDisabledFilter={DISABLE_NONE}
                                         showRoles={true}
                                         showLabels={false}
@@ -1339,7 +1366,7 @@ class BaseApp extends Component {
             func(); //call the function.
         } else { // the animation queue is empty, so we set a flag.
             this.allAnimationsFinished = true;
-            this.setState({allAnimationsFinished: true});
+            this.setState({ allAnimationsFinished: true });
         }
     }
 
@@ -1348,7 +1375,7 @@ class BaseApp extends Component {
      */
     clearAnimationQueue() {
         this.allAnimationsFinished = true;
-        this.setState({allAnimationsFinished: true});
+        this.setState({ allAnimationsFinished: true });
         this.animationQueue = [];
     }
 
@@ -1362,16 +1389,16 @@ class BaseApp extends Component {
         this.animationQueue.push(func);
         if (this.allAnimationsFinished) {
             this.allAnimationsFinished = false;
-            this.setState({allAnimationsFinished: false});
+            this.setState({ allAnimationsFinished: false });
             let func = this.animationQueue.shift();
             func(); //call the function.
         }
     }
 
     showVotes(newState) {
-        this.setState({statusBarText: "Tallying votes..."});
+        this.setState({ statusBarText: "Tallying votes..." });
         setTimeout(() => {
-            this.setState({showVotes: true})
+            this.setState({ showVotes: true })
         }, 1000);
         // Calculate final result:
 
@@ -1386,12 +1413,12 @@ class BaseApp extends Component {
         });
         setTimeout(() => {
             if (yesVotes > noVotes) {
-                this.setState({statusBarText: (yesVotes) + " - " + (noVotes) + ": Vote passed"})
+                this.setState({ statusBarText: (yesVotes) + " - " + (noVotes) + ": Vote passed" })
             } else {
-                this.setState({statusBarText: (yesVotes) + " - " + (noVotes) + ": Vote failed"})
+                this.setState({ statusBarText: (yesVotes) + " - " + (noVotes) + ": Vote failed" })
             }
         }, 2000);
-        setTimeout(() => this.setState({showVotes: false, statusBarText: ""}), 6000);
+        setTimeout(() => this.setState({ showVotes: false, statusBarText: "" }), 6000);
         setTimeout(() => {
             this.onAnimationFinish();
         }, 6500);
@@ -1416,14 +1443,14 @@ class BaseApp extends Component {
      *           Otherwise, immediately queues the next animation.
      */
     hideAlertAndFinish(delayExit = true) {
-        this.setState({showAlert: false});
+        this.setState({ showAlert: false });
         if (delayExit) {
             setTimeout(() => {
-                this.setState({alertContent: <div/>}); // reset the alert box contents
+                this.setState({ alertContent: <div /> }); // reset the alert box contents
                 this.onAnimationFinish();
             }, CUSTOM_ALERT_FADE_DURATION);
         } else {
-            this.setState({alertContent:<div/>});
+            this.setState({ alertContent: <div /> });
             this.onAnimationFinish();
         }
     }
@@ -1442,7 +1469,7 @@ class BaseApp extends Component {
                 eventBarMessage: message
             });
             setTimeout(() => {
-                this.setState({showEventBar: false})
+                this.setState({ showEventBar: false })
             }, duration);
             setTimeout(() => {
                 this.onAnimationFinish()
@@ -1481,7 +1508,7 @@ class BaseApp extends Component {
      */
     queueStatusMessage(message) {
         this.addAnimationToQueue(() => {
-            this.setState({statusBarText: message});
+            this.setState({ statusBarText: message });
             this.onAnimationFinish();
         })
     }
@@ -1500,9 +1527,9 @@ class BaseApp extends Component {
             });
         }*/
         this.queueAlert(<IconSelection gameState={this.state.gameState}
-                                       onConfirm={this.hideAlertAndFinish}
-                                       user={"P1"}
-                                       sendWSCommand={this.sendWSCommand} />);
+            onConfirm={this.hideAlertAndFinish}
+            user={"P1"}
+            sendWSCommand={this.sendWSCommand} />);
     }
 
     /**
@@ -1510,7 +1537,7 @@ class BaseApp extends Component {
      */
     renderGamePage() {
         return (
-            <div className="App" style={{textAlign: "center"}}>
+            <div className="App" style={{ textAlign: "center" }}>
                 <header className="App-header">
                     SECRET-HITLER.ONLINE
                 </header>
@@ -1519,14 +1546,13 @@ class BaseApp extends Component {
                     {this.state.alertContent}
                 </CustomAlert>
 
-                <EventBar show={this.state.showEventBar} message={this.state.eventBarMessage}/>
+                <EventBar show={this.state.showEventBar} message={this.state.eventBarMessage} />
 
-                <div style={{backgroundColor: "var(--backgroundDark)"}}>
+                <div style={{ backgroundColor: "var(--backgroundDark)" }}>
                     <PlayerDisplay
-                        user={this.state.name}
                         gameState={this.state.gameState}
+                        user={this.state.name}
                         showVotes={this.state.showVotes}
-                        participantMap={this.state.participantMap}
                         showBusy={this.state.allAnimationsFinished} // Only show busy when there isn't an active animation.
                         playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
                     />
@@ -1534,14 +1560,14 @@ class BaseApp extends Component {
 
                 <StatusBar>{this.state.statusBarText}</StatusBar>
 
-                <div style={{display: "inline-block"}}>
+                <div style={{ display: "inline-block" }}>
                     <div id={"Board Layout"}
-                         style={{alignItems: "center", display: "flex", flexDirection: "column", margin: "10px auto"}}>
+                        style={{ alignItems: "center", display: "flex", flexDirection: "column", margin: "10px auto" }}>
 
-                        <div style={{display: "flex", flexDirection: "row", alignItems: "center", marginTop: "15px"}}>
-                            <Deck cardCount={this.state.drawDeckSize} deckType={"DRAW"}/>
+                        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: "15px" }}>
+                            <Deck cardCount={this.state.drawDeckSize} deckType={"DRAW"} />
 
-                            <div style={{margin: "auto auto"}}>
+                            <div style={{ margin: "auto auto" }}>
                                 <button
                                     disabled={this.state.gameState[PARAM_STATE] !== STATE_POST_LEGISLATIVE || this.state.name !== this.state.gameState[PARAM_PRESIDENT]}
                                     onClick={() => {
@@ -1551,11 +1577,11 @@ class BaseApp extends Component {
                                 </button>
 
                                 <PlayerPolicyStatus numFascistPolicies={this.state.fascistPolicies}
-                                                    numLiberalPolicies={this.state.liberalPolicies}
-                                                    playerCount={this.state.gameState[PARAM_PLAYER_ORDER].length}/>
+                                    numLiberalPolicies={this.state.liberalPolicies}
+                                    playerCount={this.state.gameState[PARAM_PLAYER_ORDER].length} />
                             </div>
 
-                            <Deck cardCount={this.state.discardDeckSize} deckType={"DISCARD"}/>
+                            <Deck cardCount={this.state.discardDeckSize} deckType={"DISCARD"} />
                         </div>
 
                         <Board
@@ -1564,10 +1590,15 @@ class BaseApp extends Component {
                             numLiberalPolicies={this.state.liberalPolicies}
                             electionTracker={this.state.electionTracker}
                         />
+                        <div style={{ display: "flex", flexDirection: "column-reverse" }}>
+                            {this.modlogs.map((val) => (
+                                <p style={{ margin: "0.25rem", textAlign: "left" }}>{val}</p>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <div style={{textAlign: "center"}}>
+                <div style={{ textAlign: "center" }}>
                     <div id="snackbar">{this.state.snackbarMessage}</div>
                 </div>
             </div>
@@ -1585,7 +1616,7 @@ class BaseApp extends Component {
                 category: "Lobby Link",
                 action: "User is using a lobby link.",
             });
-            this.setState({joinLobby: lobby.toUpperCase().substr(0, 4), lobbyFromURL: true});
+            this.setState({ joinLobby: lobby.toUpperCase().substr(0, 4), lobbyFromURL: true });
         }
 
         let page_render;
@@ -1602,50 +1633,11 @@ class BaseApp extends Component {
         }
         return (
             <>
-                <HelmetMetaData/>
+                <HelmetMetaData />
                 {page_render}
             </>
         )
     }
 }
 
-function App() {
-  let auth = authStore();
-  const compRef = useRef(null);
-  useEffect(() => {
-    if (auth.user && compRef.current) {
-    //   compRef.current.updateJoinName(auth.user.username);
-    //   compRef.current.updateCreateLobbyName(auth.user.username);
-      compRef.current.setState({
-        joinName: auth.user.username,
-        createLobbyName: auth.user.username,
-        user: auth.user
-      });
-      console.log("!!!");
-    }
-  }, [auth.user]);
-  function updateParticipants(participants) {
-    if (compRef.current) {
-      compRef.current.participants = participants;
-      compRef.current.participantMap = {};
-      compRef.current.participants.forEach(p => {
-        if (compRef.current) compRef.current.participantMap[p.username] = p;
-      });
-      compRef.current.setState({
-        participantMap: compRef.current.participantMap
-      })
-    }
-  }
-  discordSdk.commands.getActivityInstanceConnectedParticipants().then((data) => {updateParticipants(data.participants)});
-  discordSdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE", (event) => {
-    updateParticipants(event.participants);
-  });
-  return (
-    <>
-      <AuthProvider>
-        <BaseApp auth={auth} ref={compRef} />
-      </AuthProvider>
-    </>
-  )
-}
 export default App;

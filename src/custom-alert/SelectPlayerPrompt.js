@@ -58,7 +58,6 @@ class SelectPlayerPrompt extends Component {
                 buttonDisabled={this.state.waitingForServer}
                 user={props.user}
                 includeUser={props.includeUser}
-                participantMap={this.participantMap}
             />
         );
     }
@@ -66,7 +65,6 @@ class SelectPlayerPrompt extends Component {
 
 SelectPlayerPrompt.defaultProps = {
     disabledFilter: DISABLE_EXECUTED_PLAYERS,
-    participantMap: {}
 };
 
 SelectPlayerPrompt.propTypes = {
@@ -82,7 +80,6 @@ SelectPlayerPrompt.propTypes = {
     headerText: PropTypes.string,
     renderHeader:PropTypes.func,
     buttonText: PropTypes.string,
-    participantMap: PropTypes.object
 };
 
 export default SelectPlayerPrompt;
@@ -97,7 +94,7 @@ export default SelectPlayerPrompt;
  *         Notably, the prompt disables players that are term-limited, and when the button is pressed sends the
  *         COMMAND_NOMINATE_CHANCELLOR command to the server.
  */
-export const SelectNominationPrompt = (user, gameState, sendWSCommand, participantMap) => {
+export const SelectNominationPrompt = (user, gameState, sendWSCommand) => {
     let shouldFascistVictoryWarningBeShown = gameState[PARAM_FASCIST_POLICIES] >= 3;
 
     return (
@@ -119,7 +116,6 @@ export const SelectNominationPrompt = (user, gameState, sendWSCommand, participa
             }}
             disabledFilter={DISABLE_TERM_LIMITED_PLAYERS}
             includeUser={false}
-            participantMap={participantMap}
         />
     )
 };
@@ -133,7 +129,7 @@ export const SelectNominationPrompt = (user, gameState, sendWSCommand, participa
  *         The prompt disables players that have been investigated, and when the button is pressed sends the
  *         COMMAND_GET_INVESTIGATION command to the server.
  */
-export const SelectInvestigationPrompt = (user, gameState, sendWSCommand, participantMap) => {
+export const SelectInvestigationPrompt = (user, gameState, sendWSCommand) => {
     return (
         <SelectPlayerPrompt
             user={user}
@@ -143,7 +139,6 @@ export const SelectInvestigationPrompt = (user, gameState, sendWSCommand, partic
             disabledFilter={DISABLE_INVESTIGATED_PLAYERS}
             includeUser={false}
             label={"INVESTIGATE LOYALTY"}
-            participantMap={participantMap}
             renderHeader={() => {
                 return (
                     <>
@@ -164,7 +159,7 @@ export const SelectInvestigationPrompt = (user, gameState, sendWSCommand, partic
     )
 };
 
-export const SelectSpecialElectionPrompt = (user, gameState, sendWSCommand,participantMap) => {
+export const SelectSpecialElectionPrompt = (user, gameState, sendWSCommand) => {
     return (
         <SelectPlayerPrompt
             user={user}
@@ -175,12 +170,11 @@ export const SelectSpecialElectionPrompt = (user, gameState, sendWSCommand,parti
             includeUser={false}
             label={"SPECIAL ELECTION"}
             headerText={"Choose any player to become the next president. Once their term is finished, the order continues as normal."}
-            participantMap={participantMap}
         />
     );
 };
 
-export const SelectExecutionPrompt = (user, gameState, sendWSCommand, participantMap) => {
+export const SelectExecutionPrompt = (user, gameState, sendWSCommand) => {
     return (
         <SelectPlayerPrompt
             user={user}
@@ -202,7 +196,6 @@ export const SelectExecutionPrompt = (user, gameState, sendWSCommand, participan
                     </>
                 );
             }}
-            participantMap={participantMap}
         />
     );
 };

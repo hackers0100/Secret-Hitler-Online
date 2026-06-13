@@ -175,12 +175,8 @@ class Player extends Component {
 
                 <img id={"player-icon"}
                      alt={portraitsAltText[this.props.icon]}
-                    //  src={portraits[this.props.icon]}
-                     src={this.props.icon in portraits ? portraits[this.props.icon] : !this.props.icon.startsWith("+") ? this.props.icon : portraits[this.props.icon.slice(1)]}
+                     src={portraits[this.props.icon]}
                      className={this.getClassName()}
-                     style={{
-                         borderRadius: "50%",
-                     }}
                 />
 
                 <img id="player-busy-icon"
@@ -202,6 +198,7 @@ class Player extends Component {
                          className={this.getClassName() + " force-update"}
                          mode="multi"
                          forceSingleModeWidth={false}
+                         alignVertWithFlexbox={true}
                          throttle={1000}
                 >
                     {this.props.name}

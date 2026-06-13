@@ -2,7 +2,7 @@ import React, {Component} from "react";
 import "../selectable.css";
 import "./IconSelection.css";
 import Cookies from 'js-cookie';
-// import {TwitterShareButton} from 'react-twitter-embed';
+import {TwitterShareButton} from 'react-twitter-embed';
 import portraits, {unlockedPortraits, lockedPortraits, defaultPortrait} from "../assets";
 import {portraitsAltText} from "../assets";
 
@@ -11,7 +11,7 @@ import {
     PARAM_ICON
 } from "../GlobalDefinitions";
 import PropTypes from "prop-types";
-// import ButtonPrompt from "./ButtonPrompt";
+import ButtonPrompt from "./ButtonPrompt";
 
 export const UNLOCK_ICONS_COOKIE_NAME = "_unlock_icons";
 
@@ -130,28 +130,70 @@ class IconSelection extends Component {
     }
 
     addTwitterHooks() {
-        // window.twttr.events.bind('tweet', this.onClickUnlock);
+        window.twttr.events.bind('tweet', this.onClickUnlock);
     }
 
 
     render() {
         let headerPortraits;
+        let footerContent;
         if (this.state.showLockedPrompt) {
             headerPortraits = unlockedPortraits;
+            footerContent = () => {
+                return (
+                    <>
+                        <h2 style={{textAlign: "left"}}>EXTRA ICONS:</h2>
+                        <div id={"locked-icon-text-container"}>
+                            <p id={"icon-text"} style={{textAlign: "left"}}>Unlock these {lockedPortraits.length} extra icons by sharing this
+                                website! I'd really like for more people to enjoy this game, so this would be a big help.</p>
+                            <TwitterShareButton
+                                url={"https://secret-hitler.online!"}
+                                options={{text: "I'm playing #SecretHitlerOnline at", size:"large"}}
+                                onLoad={this.addTwitterHooks}
+                                placeholder={(<p id={"icon-text"} style={{color:"var(--textColorLiberal)"}}>Loading...</p>)}
+                            />
+                        </div>
+                        {this.getIconButtonHML(lockedPortraits)}
+                    </>
+                );
+            };  // end footer content
         } else {
             headerPortraits = unlockedPortraits.concat(lockedPortraits);
+            footerContent = () => {
+                return (
+                <>
+                    <div id={"locked-icon-text-container"}>
+                        <p>(You unlocked {lockedPortraits.length} extra icons by sharing Secret Hitler Online! Thank you! 💖)</p>
+                        <TwitterShareButton
+                            url={"https://secret-hitler.online!"}
+                            options={{text: "I'm playing #SecretHitlerOnline at", size:"large"}}
+                            onLoad={this.addTwitterHooks}
+                            placeholder={(<p id={"icon-text"} style={{color:"var(--textColorLiberal)"}}>Loading...</p>)}
+                        />
+                    </div>
+                </>);
+            };  // end footer content
         }
-        let done = false;
-        headerPortraits.map((portraitID, index) => {
-            let currPortrait = this.props.playerToIcon[this.props.user];
-            if (!done && (!this.isIconInUse(portraitID) || portraitID === currPortrait)) {
-                this.onClickIcon(portraitID);
-                this.onConfirmButtonClick();
-                done=true;
-            }
-            return true;
-        })
-        return <></>
+
+
+
+        return (
+            <ButtonPrompt
+                label={"PLAYER LOOK"}
+                renderHeader={ () => {
+                    return(
+                        <>
+                            <p>Choose a look, then press confirm.</p>
+                            {this.getIconButtonHML(headerPortraits)}
+                        </>
+                    );
+                } }
+                renderFooter={footerContent}
+                buttonDisabled={(this.props.playerToIcon[this.props.user] === defaultPortrait)}
+                buttonOnClick={this.onConfirmButtonClick}
+            >
+            </ButtonPrompt>
+        )
     }
 
 }

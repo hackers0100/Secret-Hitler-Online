@@ -182,7 +182,6 @@ class PlayerDisplay extends Component {
             let onClick = () => {
                 this.onPlayerSelected(playerName);
             };
-            let user = this.props.participantMap[playerName];
             out[i] = (
                 <div id={"player-display-text-container"} key={playerName}>
                     {label}
@@ -193,13 +192,13 @@ class PlayerDisplay extends Component {
                         highlight = {playerName === this.props.user}
                         disabled = {disabled}
                         disabledText = {disabledText}
-                        name={user?.global_name || playerName}
+                        name = {playerName}
                         useAsButton = {this.props.useAsButtons}
                         isSelected = {isSelected}
                         onClick = {onClick}
                         showVote={this.showPlayerVote[i + start]}
                         vote={this.props.gameState[PARAM_VOTES][playerName]}
-                        icon={user?.avatar? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`: "+"+this.props.gameState[PARAM_ICON][playerName]}
+                        icon={this.props.gameState[PARAM_ICON][playerName]}
                     />
                 </div>
             )
@@ -383,8 +382,7 @@ PlayerDisplay.defaultProps = {
     includeUser: true,
     showVotes: false,
     showRoles: false,
-    showLabels: true,
-    participantMap: {}
+    showLabels: true
 };
 
 PlayerDisplay.propTypes = {
@@ -401,7 +399,6 @@ PlayerDisplay.propTypes = {
     showRoles: PropTypes.bool,
     showBusy: PropTypes.bool,
     includeUser: PropTypes.bool,
-    participantMap: PropTypes.object
 };
 
 

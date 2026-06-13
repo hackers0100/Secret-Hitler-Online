@@ -39,7 +39,6 @@ class PlayerDisplayPrompt extends Component{
                     onSelection = {(itemSelected) => {
                         this.setState({selection: itemSelected});
                     }}
-                    participantMap = {this.props.participantMap}
                 />
             </ButtonPrompt>
 
@@ -54,8 +53,7 @@ PlayerDisplayPrompt.defaultProps = {
     buttonText: "CONFIRM",
     buttonOnClick: (selectedItem) => {
         console.log("Button clicked with " + selectedItem + " selected.");
-    },
-    participantMap: {}
+    }
 };
 
 PlayerDisplayPrompt.propTypes = {
@@ -71,7 +69,6 @@ PlayerDisplayPrompt.propTypes = {
     buttonText: PropTypes.string,
     buttonOnClick: PropTypes.func,
     buttonDisabled: PropTypes.bool,
-    participantMap: PropTypes.object
 };
 
 export default PlayerDisplayPrompt;
